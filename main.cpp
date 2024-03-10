@@ -49,11 +49,6 @@ void shellSort(int *arr, int size, int &swaps, int &comparisons);
 
 void quickSort(int *arr, int size, int &swaps, int &comparisons);
 
-
-int findLengthOfLongest(std::string pString[5]);
-
-bool compareMatrices(int **standard, int **_matrix);
-
 /*
  * Реализовать сортировки для шаблона T: bubble sort, selection sort, insertion sort, Shell sort, quicksort;
  * Пусть функции будут не чистыми и редактируют данный им массив напрямую, т.к. я им все равно буду давать копию.
@@ -288,13 +283,10 @@ void sub_main() {
     }
 
     int element;
-    std::string color;
 
     for (int i = 0; i < SIZE_M; i++) {
         for (int j = 0; j < SIZE_N; j++) {
             element = matrix[i][j];
-            color = "";
-
             std::cout
                     << std::setw(spaces)
                     << element;
@@ -336,8 +328,8 @@ void sub_main() {
             }
         }
     }
-    int *total_swaps = (int *) malloc(sizeof(int) * SORTING_ALGORITHMS_SIZE);
-    int *total_comparisons = (int *) malloc(sizeof(int) * SORTING_ALGORITHMS_SIZE);
+    long *total_swaps = (long *) malloc(sizeof(long) * SORTING_ALGORITHMS_SIZE);
+    long *total_comparisons = (long *) malloc(sizeof(long ) * SORTING_ALGORITHMS_SIZE);
     for (int i = 0; i < SORTING_ALGORITHMS_SIZE; i++) {
         total_swaps[i] = 0;
         total_comparisons[i] = 0;
@@ -415,18 +407,6 @@ void sub_main() {
         }
         std::cout << std::endl;
     }
-
-    /// Удаление матриц
-
-    for (int i = 0; i < SORTING_ALGORITHMS_SIZE; i++) {
-        for (int j = 0; j < SIZE_M; j++) {
-            free(temp_mx[i][j]);
-        }
-        free(temp_mx[i]);
-    }
-    free(temp_mx);
-    deleteMatrix(matrix, SIZE_M);
-
     /// Подведение итогов
     std::cout << "\nFINAL COMPARISON" << std::endl;
     std::cout << "=================" << std::endl;
@@ -440,6 +420,19 @@ void sub_main() {
                 << total_comparisons[i]
                 << std::endl;
     }
+    /// Удаление матриц
+    free(total_swaps);
+    free(total_comparisons);
+    for (int i = 0; i < SORTING_ALGORITHMS_SIZE; i++) {
+        for (int j = 0; j < SIZE_M; j++) {
+            free(temp_mx[i][j]);
+        }
+        free(temp_mx[i]);
+    }
+    free(temp_mx);
+    deleteMatrix(matrix, SIZE_M);
+
+
 
 }
 
