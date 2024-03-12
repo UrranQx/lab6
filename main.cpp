@@ -7,6 +7,9 @@
 #define EPS 1e-15
 #define SET_PRECISION 3
 #define ADDITIONAL_SPACING 2
+#define NO_DEBUG 0
+#define DEBUG_MIN 1
+#define DEBUG_MAX 2
 #define TABLE_SPACING 20
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -16,7 +19,7 @@
 #define ANSI_COLOR_CYAN    "\x1b[36m"
 #define ANSI_COLOR_WHITE   "\x1b[97m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
-#define ANSI_COLOR_BOLD    "\x1b[3m\x1b[7m"
+#define ANSI_COLOR_BOLD    "\x1b[3;7;97m"
 #define ANSI_K_ATTR        "\x1b[95m\x1b[3m\x1b[7m"
 
 /**
@@ -85,8 +88,25 @@ int amountOfDigits(int n) {
     return c;
 }
 
+int amountOfDigits(unsigned long long n) {
+    int c = 0;
+    if (n == 0) return 1;
+    while (n > 0) {
+        c++;
+        n /= 10;
+    }
+    return c;
+}
 
-void sub_main(Comparator myComparator);
+unsigned long long maxFrom(const unsigned long long *arr, int size) {
+    unsigned long long max = arr[0];
+    for (int i = 1; i < size; i++) {
+        if (arr[i] > max) max = arr[i];
+    }
+    return max;
+}
+
+void sub_main(int SIZE_M = 3, int SIZE_N = 4, Comparator myComparator = ascendingOrder);
 
 int findIndexOfMax(const int *_arr, int begin, int end, int &comparisons);
 
@@ -103,6 +123,7 @@ void insertionSort(int *arr, int size, Comparator inOrder, int &swaps, int &comp
 void shellSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons);
 
 void quickSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons);
+
 
 /*
  * Реализовать сортировки для шаблона T: bubble sort, selection sort, insertion sort, Shell sort, quicksort;
@@ -124,9 +145,31 @@ void quickSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparis
 
 int main() {
     Comparator myComparator = absDescendingOrder;
-    sub_main(myComparator);
+    int SIZE_M, SIZE_N;
+    std::cout << "Enter matrix SIZE_M: ";
+    std::cin >> SIZE_M;
+    std::cout << std::endl;
+
+    std::cout << "Enter matrix SIZE_N: ";
+    std::cin >> SIZE_N;
+    std::cout << std::endl;
+
+    if (SIZE_M <= 0 || SIZE_N <= 0) throw std::invalid_argument("ERROR: Matrix cannot exist");
+
+    sub_main(SIZE_M, SIZE_N, myComparator);
+
+
+    ///TESTING DIFFERENT COMPARATORS
+    //sub_main(5,5,compareBySumOfDigits);
+    //sub_main(5,5,compareBySumOfDigits);
+
+
+    // std::cout << "Sub main in default(prints a random 3x4 array, orders column's elements by ascension) ";
+    // sub_main();
+
     return 0;
 }
+
 
 /**
  * Bubble sort - сортировка, при которой самый надутый элемент всплывает вверх.
@@ -319,32 +362,22 @@ void deleteMatrix(int **matrix, int M) {
     free(matrix);
 }
 
-void sub_main(Comparator myComparator = ascendingOrder) { // По умолчанию сортируем по возрастанию
-
-    int SIZE_M, SIZE_N;
-    std::cout << "Enter matrix SIZE_M: ";
-    std::cin >> SIZE_M;
-    std::cout << std::endl;
-
-    std::cout << "Enter matrix SIZE_N: ";
-    std::cin >> SIZE_N;
-    std::cout << std::endl;
-
-    if (SIZE_M <= 0 || SIZE_N <= 0) throw std::invalid_argument("ERROR: Matrix cannot exist");
-
-    auto bottom = (double) (-SIZE_M * SIZE_N);
-    auto top = (double) (SIZE_M * SIZE_N);
-
-    int spaces = amountOfDigits((int) top) +
+void sub_main(int SIZE_M, int SIZE_N, Comparator myComparator) {
+    // По умолчанию сортируем по возрастанию, но можно передать и другой компаратор.
+    int range_bottom = (-SIZE_M * SIZE_N);
+    int range_top = (SIZE_M * SIZE_N + 1);
+    int rangeBorder = SIZE_M * SIZE_N + 1;
+    int spaces = amountOfDigits(abs(range_bottom) > abs(range_top) ? range_bottom : range_top) +
                  ADDITIONAL_SPACING; // -> дополнительные пробелы для того, чтобы цифры не слипались
-    std::cout << "\n";
     int precision = SET_PRECISION;
     std::cout.precision(precision);
 
 
     std::random_device rd;
     std::mt19937 mt(rd()); // Mersenne Twister Algorithm (https://en.wikipedia.org/wiki/Mersenne_Twister)
-    std::uniform_real_distribution<double> dist(bottom, top);
+    std::uniform_real_distribution<double> dist(-rangeBorder, rangeBorder);
+    /// Debug level
+    short debug = DEBUG_MAX;
 
     int **matrix = (int **) malloc(sizeof(int *) * SIZE_M);
     for (int i = 0; i < SIZE_M; i++) {
@@ -356,21 +389,24 @@ void sub_main(Comparator myComparator = ascendingOrder) { // По умолчан
     }
 
     int element;
+    if (debug > NO_DEBUG) {
+        for (int i = 0; i < SIZE_M; i++) {
+            for (int j = 0; j < SIZE_N; j++) {
+                element = matrix[i][j];
+                std::cout
+                        << std::setw(spaces)
+                        << element;
 
-    for (int i = 0; i < SIZE_M; i++) {
-        for (int j = 0; j < SIZE_N; j++) {
-            element = matrix[i][j];
-            std::cout
-                    << std::setw(spaces)
-                    << element;
-
+            }
+            std::cout << std::endl;
         }
         std::cout << std::endl;
     }
+
     // Для транспонирования матрицы воспользуемся тем, что у нас есть два индекса. Т.е. мы можем просто их поменять местами.
     // Т.е. если у нас есть матрица 3x3, то мы можем просто поменять местами элементы с индексами (0, 1) и (1, 0)
 
-    // Транспонирование матрицы
+    /// Транспонирование матрицы если мы не хотим отдельно выделять столбец.
     /*
     for (int i = 0; i < SIZE_M; i++) {
         for (int j = 0; j < SIZE_N; j++) {
@@ -402,12 +438,13 @@ void sub_main(Comparator myComparator = ascendingOrder) { // По умолчан
             }
         }
     }
-    long *total_swaps = (long *) malloc(sizeof(long) * SORTING_ALGORITHMS_SIZE);
-    long *total_comparisons = (long *) malloc(sizeof(long) * SORTING_ALGORITHMS_SIZE);
+    auto *total_swaps = (unsigned long long *) malloc(sizeof(unsigned long long) * SORTING_ALGORITHMS_SIZE);
+    auto *total_comparisons = (unsigned long long *) malloc(sizeof(unsigned long long) * SORTING_ALGORITHMS_SIZE);
     for (int i = 0; i < SORTING_ALGORITHMS_SIZE; i++) {
         total_swaps[i] = 0;
         total_comparisons[i] = 0;
     }
+
 
     // Основной проход по всем алгоритмам сортировки;
 
@@ -426,22 +463,23 @@ void sub_main(Comparator myComparator = ascendingOrder) { // По умолчан
             total_swaps[algorithm_index] += swaps;
             total_comparisons[algorithm_index] += comparisons;
 
-            std::cout
-                    << sortingAlgorithmsNames[algorithm_index]
-                    << " sort: "
-                    << std::setw(7 + 9 -
-                                 (int) sortingAlgorithmsNames[algorithm_index].length())
+            if (debug >= DEBUG_MAX)
+                std::cout
+                        << sortingAlgorithmsNames[algorithm_index]
+                        << " sort: "
+                        << std::setw(7 + 9 -
+                                     (int) sortingAlgorithmsNames[algorithm_index].length())
 
 
-                    << "swaps: " << swaps
-                    << " comparisons: " << comparisons
-                    << std::endl;
+                        << "swaps: " << swaps
+                        << " comparisons: " << comparisons
+                        << std::endl;
 
             for (int j = 0; j < SIZE_M; j++) temp_mx[algorithm_index][j][i] = column[j];
             free(column);
         }
 
-        std::cout << std::endl;
+        if (debug >= DEBUG_MAX)std::cout << std::endl;
 
     }
 
@@ -450,56 +488,72 @@ void sub_main(Comparator myComparator = ascendingOrder) { // По умолчан
      * Моя аксиома такая, что bubble sort работает безупречно, поэтому он послужит эталоном.
      * Standard = temp_mx[0];
      */
+    if (debug > NO_DEBUG) {
+        std::cout << "Comparing results of sorting algorithms to Bubble Sort\n";
+        std::cout << "======================================================\n";
+        int **standard = temp_mx[0];
+        for (int i = 1; i < SORTING_ALGORITHMS_SIZE; i++) {
+            bool fl = false;
+            int **t_mx = temp_mx[i];
+            for (int j = 0; j < SIZE_M; ++j) {
+                for (int k = 0; k < SIZE_N; ++k) {
+                    if (standard[j][k] != t_mx[j][k]) {
+                        fl = true;
+                        std::cout << "\nMethod" << sortingAlgorithmsNames[i] << " is a total failure" << std::endl;
+                        break;
+                    }
 
-    std::cout << "Comparing results of sorting algorithms to Bubble Sort\n";
-    std::cout << "======================================================\n";
-    int **standard = temp_mx[0];
-    for (int i = 1; i < SORTING_ALGORITHMS_SIZE; i++) {
-        bool fl = false;
-        int **t_mx = temp_mx[i];
-        for (int j = 0; j < SIZE_M; ++j) {
-            for (int k = 0; k < SIZE_N; ++k) {
-                if (standard[j][k] != t_mx[j][k]) {
-                    fl = true;
-                    std::cout << "\nMethod" << sortingAlgorithmsNames[i] << " is a total failure" << std::endl;
-                    break;
                 }
-
+                if (fl) break;
             }
-            if (fl) break;
+            if (!fl) std::cout << "Everything is okay with: " << sortingAlgorithmsNames[i] << " sort" << std::endl;
         }
-        if (!fl) std::cout << "\nEverything is okay with: " << sortingAlgorithmsNames[i] << " sort" << std::endl;
-    }
 
-    std::cout << "\n\nCHANGED MATRIX \n\n";
-    for (int k = 0; k < SORTING_ALGORITHMS_SIZE; k++) {
-        std::cout << "Method: " << sortingAlgorithmsNames[k] << std::endl;
+        std::cout << ANSI_COLOR_MAGENTA "\nCHANGED MATRIX \n" << ANSI_COLOR_RESET;
 
-        for (int i = 0; i < SIZE_M; i++) {
-            for (int j = 0; j < SIZE_N; j++) {
-                element = temp_mx[k][i][j];
-                std::cout
-                        << std::setw(spaces)
-                        << element;
-                //printf(" %4d ", matrix[i * SIZE + j]); // Deprecated
+        for (int k = 0; k < SORTING_ALGORITHMS_SIZE; k++) {
+            if (debug < DEBUG_MAX && k > 0)continue;
+            std::cout << "Method: " << sortingAlgorithmsNames[k] << std::endl;
+            for (int i = 0; i < SIZE_M; i++) {
+                for (int j = 0; j < SIZE_N; j++) {
+                    element = temp_mx[k][i][j];
+                    std::cout
+                            << std::setw(spaces)
+                            << element;
+                    //printf(" %4d ", matrix[i * SIZE + j]); // Deprecated
 
+                }
+                std::cout << std::endl;
             }
-            std::cout << std::endl;
         }
     }
     /// Подведение итогов
-    std::cout << "\nFINAL COMPARISON" << std::endl;
-    std::cout << "=================" << std::endl;
-    std::cout << "METHOD" << std::setw(TABLE_SPACING) << "SWAPS" << std::setw(TABLE_SPACING) << "COMPARISONS"
-              << std::endl;
+    /// - некрасивый код, ради красивого вывода
+    std::cout << "\n"
+              << std::string(20, ' ')
+              << ANSI_COLOR_MAGENTA << "FINAL COMPARISON" << ANSI_COLOR_RESET
+              << std::string(20, ' ') << std::endl;
+
+    std::cout << ANSI_COLOR_BOLD << ANSI_COLOR_YELLOW << std::string(56, '=') << ANSI_COLOR_RESET << std::endl;
+    int maxSwapsDigits = amountOfDigits(maxFrom(total_swaps, SORTING_ALGORITHMS_SIZE));
+    int maxComparisonsDigits = amountOfDigits(maxFrom(total_comparisons, SORTING_ALGORITHMS_SIZE));
+    maxSwapsDigits += 2;
+    maxComparisonsDigits += 2;
+    std::cout << std::left << std::setw(20) << "Sorting Algorithm"
+              << std::right
+              << std::setw(10 > maxSwapsDigits ? 10 : maxSwapsDigits) << "Swaps"
+              << std::setw(15 > maxComparisonsDigits ? 15 : maxComparisonsDigits) << "Comparisons" << std::endl;
+    std::cout << ANSI_COLOR_GREEN << std::string(56, '-') << ANSI_COLOR_RESET << std::endl;
+
     for (int i = 0; i < SORTING_ALGORITHMS_SIZE; i++) {
-        std::cout
-                << sortingAlgorithmsNames[i] << std::setw(TABLE_SPACING - sortingAlgorithmsNames[i].length() + 4)
-                << total_swaps[i]
-                << std::setw(TABLE_SPACING)
-                << total_comparisons[i]
-                << std::endl;
+        std::cout << std::left << std::setw(20) << sortingAlgorithmsNames[i]
+                  << std::right
+                  << std::setw(10 > maxSwapsDigits ? 10 : maxSwapsDigits) << total_swaps[i]
+                  << std::setw(15 > maxComparisonsDigits ? 15 : maxComparisonsDigits) << total_comparisons[i]
+                  << std::endl;
     }
+    std::cout << ANSI_COLOR_GREEN << std::string(56, '-') << ANSI_COLOR_RESET << std::endl;
+
     /// Удаление матриц
     free(total_swaps);
     free(total_comparisons);
@@ -514,7 +568,6 @@ void sub_main(Comparator myComparator = ascendingOrder) { // По умолчан
 
 
 }
-
 
 
 
