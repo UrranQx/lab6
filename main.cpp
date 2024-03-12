@@ -2,7 +2,7 @@
 #include <string>
 #include <random>
 #include <iomanip>
-#include <functional>
+//#include <functional>
 
 #define EPS 1e-15
 #define SET_PRECISION 3
@@ -19,6 +19,61 @@
 #define ANSI_COLOR_BOLD    "\x1b[3m\x1b[7m"
 #define ANSI_K_ATTR        "\x1b[95m\x1b[3m\x1b[7m"
 
+/**
+ * @brief Создадим тип Comparator, который будет принимать два аргумента типа int и возвращать bool.
+ */
+typedef bool (*Comparator)(int, int);
+
+/// @brief Проверяет, если элементы соответственно стоят в порядке возрастания
+bool ascendingOrder(int a, int b) {
+    return a < b;
+}
+
+/// @brief Проверяет, если сумма цифр числа стоит в порядке возрастания
+/// @brief При совпадении суммы, сравнивает сами числа
+bool compareBySumOfDigits(int a, int b) {
+    int absA = abs(a);
+    int absB = abs(b);
+    if (absA == absB) { // Сразу проверяем, если числа равны по модулю, то большее число расположим левее меньшего
+        return a > b;   // Сначала 11, потом -11
+    }
+    int sumA = 0, sumB = 0;
+    while (absA > 0) {
+        sumA += absA % 10;
+        absA /= 10;
+    }
+    while (absB > 0) {
+        sumB += absB % 10;
+        absB /= 10;
+    }
+    if (sumA == sumB) return a > b; // Если суммы цифр чисел равны, то большее число расположим левее меньшего
+    // Сначала 58, потом 49; Сначала -49, потом -58
+    return sumA < sumB;             // 0 -> 1 -> 44 -> 8 -> 96 -> 99 -> ...
+}
+
+/// @brief Проверяет, если элементы соответственно стоят в порядке убывания
+bool descendingOrder(int a, int b) {
+    return a > b;
+}
+
+/// @brief Проверяет, если элементы по их абсолютным значениям расположены в порядке возрастания.
+/// В случае совпадения абсолютных значений, меньшее число располагается левее большего.
+bool absAscendingOrder(int a, int b) {
+    int absA = abs(a);
+    int absB = abs(b);
+    if (absA == absB) return a < b;
+    return abs(a) < abs(b);
+}
+
+/// @brief Проверяет, если элементы по их абсолютным значениям расположены в порядке возрастания.
+/// В случае совпадения абсолютных значений, большее число располагается левее меньшего.
+bool absDescendingOrder(int a, int b) {
+    int absA = abs(a);
+    int absB = abs(b);
+    if (absA == absB) return a > b;
+    return absA > absB;
+}
+
 int amountOfDigits(int n) {
     int c = 0;
     n = abs(n);
@@ -31,23 +86,23 @@ int amountOfDigits(int n) {
 }
 
 
-void sub_main();
+void sub_main(Comparator myComparator);
 
 int findIndexOfMax(const int *_arr, int begin, int end, int &comparisons);
 
 int findIndexOfMin(const int *_arr, int begin, int end, int &comparisons);
 
-void bubbleSort(int *arr, int size, int &swaps, int &comparisons);
+void bubbleSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons);
 
-void selectionSort(int *arr, int size, int &swaps, int &comparisons);
+void selectionSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons);
 
-void selectionSort_minmax(int *arr, int size, int &swaps, int &comparisons);
+void selectionSort_minmax(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons);
 
-void insertionSort(int *arr, int size, int &swaps, int &comparisons);
+void insertionSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons);
 
-void shellSort(int *arr, int size, int &swaps, int &comparisons);
+void shellSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons);
 
-void quickSort(int *arr, int size, int &swaps, int &comparisons);
+void quickSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons);
 
 /*
  * Реализовать сортировки для шаблона T: bubble sort, selection sort, insertion sort, Shell sort, quicksort;
@@ -68,8 +123,8 @@ void quickSort(int *arr, int size, int &swaps, int &comparisons);
 
 
 int main() {
-    // Улучшенный способ генерации псевдо-рандомных чисел
-    sub_main();
+    Comparator myComparator = absDescendingOrder;
+    sub_main(myComparator);
     return 0;
 }
 
@@ -78,12 +133,12 @@ int main() {
  * То есть мы проходимся по массиву size раз, и если i-й и i + 1 -й стоят не в порядке возрастания, то свапаем их.
  *
  */
-void bubbleSort(int *arr, int size, int &swaps, int &comparisons) {
+void bubbleSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons) {
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size - i - 1; j++) {
             // До size - i - 1 т.к. последний элемент уже будет отсортирован после первой итерации, потом предпоследний...
             comparisons++;
-            if (arr[j] > arr[j + 1]) {
+            if (!inOrder(arr[j], arr[j + 1])) {
                 swaps++;
                 std::swap(arr[j], arr[j + 1]);
                 /// Тут std::swap быстрее, т.к. он использует std::move.
@@ -123,11 +178,24 @@ int findIndexOfMin(const int *_arr, int begin, int end, int &comparisons) {
     return ans;
 }
 
-void selectionSort_minmax(int *arr, int size, int &swaps, int &comparisons) {
+int findIndexOfBestInOrder(const int *_arr, int begin, int end, Comparator order, int &comparisons) {
+    int _bestInOrder = _arr[begin]; // Best in order - лучший в порядке, удовлетворяющем myOrder.
+    int ans = begin;
+    for (int i = begin + 1; i <= end; i++) {
+        comparisons++;
+        if (order(_arr[i], _bestInOrder)) {
+            _bestInOrder = _arr[i];
+            ans = i;
+        }
+    }
+    return ans;
+}
+
+void selectionSort_orderFinder(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons) {
     int index;
     for (int i = 0; i < size - 1; i++) {
-        index = findIndexOfMin(arr, i + 1, size - 1, comparisons);
-        if (arr[index] < arr[i]) {
+        index = findIndexOfBestInOrder(arr, i + 1, size - 1, inOrder, comparisons);
+        if (inOrder(arr[index], arr[i])) {
             std::swap(arr[index], arr[i]);
             swaps++;
         }
@@ -141,28 +209,28 @@ void selectionSort_minmax(int *arr, int size, int &swaps, int &comparisons) {
  * Смотрим на неотсортированный массив, ищем минимальный его элемент и меняем местами с тем, что в начале такого массива
  *
  */
-void selectionSort(int *arr, int size, int &swaps, int &comparisons) {
+void selectionSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons) {
     for (int i = 0; i < size - 1; i++) {
         // Предположим, что минимальный элемент - текущий элемент с индексом i
-        int indexOfMin = i;
+        int indexOfElement = i;
         for (int j = i + 1; j < size; j++) {
             // В этом цикле надо найти индекс самого малого элемента. Потом мы им воспользуемся, чтобы свапнуться с i-м
             comparisons++;
-            if (arr[indexOfMin] > arr[j]) {
-                indexOfMin = j;
+            if (!inOrder(arr[indexOfElement], arr[j])) {
+                indexOfElement = j;
             }
         }
-        if (indexOfMin != i) {
-            std::swap(arr[indexOfMin], arr[i]);
+        if (indexOfElement != i) {
+            std::swap(arr[indexOfElement], arr[i]);
             swaps++;
         }
 
     }
 }
 
-void insertionSort(int *arr, int size, int &swaps, int &comparisons) {
+void insertionSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons) {
     for (int key = 1; key < size; key++) {
-        for (int i = key; i > 0 && arr[i - 1] > arr[i]; i--) {
+        for (int i = key; i > 0 && !inOrder(arr[i - 1], arr[i]); i--) {
             std::swap(arr[i - 1], arr[i]);
             swaps++;
             comparisons++;
@@ -170,12 +238,19 @@ void insertionSort(int *arr, int size, int &swaps, int &comparisons) {
     }
 }
 
-void shellSort(int *arr, int size, int &swaps, int &comparisons) {
+/*
+ * Shell sort - улучшенная версия insertion sort.
+ * Он работает так: он сначала сортирует элементы, находящиеся на расстоянии gap друг от друга.
+ * Потом уменьшает gap вдвое и снова сортирует элементы на расстоянии gap друг от друга.
+ * И так до тех пор, пока gap не станет равным 1, т.е. пока не отсортирует все элементы.
+ */
+void shellSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons) {
     for (int gap = size / 2; gap > 0; gap /= 2) {
+        // Сначала сортируем элементы на расстоянии gap друг от друга
         for (int i = gap; i < size; i++) {
             int temp = arr[i];
             int j;
-            for (j = i; j >= gap && arr[j - gap] > temp; j -= gap) {
+            for (j = i; j >= gap && !inOrder(arr[j - gap], temp); j -= gap) {
                 arr[j] = arr[j - gap];
                 swaps++;
                 comparisons++;
@@ -185,21 +260,22 @@ void shellSort(int *arr, int size, int &swaps, int &comparisons) {
     }
 }
 
-void quickSort(int *arr, int size, int &swaps, int &comparisons) {
+void quickSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons) {
     if (size <= 1) return;
     int pivot = arr[size / 2]; // pivot - указатель на половину (ну с учетом округления при целочисленном делении)
     int i = 0, j = size - 1;
     while (i <= j) {
-        while (arr[i] < pivot) {
+        while (inOrder(arr[i], pivot)) {
             i++;
             comparisons++;
-        }
-        while (arr[j] > pivot) {
+        } // Слева будут элементы, которые должны находится при заданном порядке до pivot
+        while (inOrder(pivot, arr[j])) {
             j--;
             comparisons++;
-        }
+        } // Справа будут элементы, которые должны находится при заданном порядке после pivot
         if (i <= j) {
             std::swap(arr[i], arr[j]);
+            // Если сортируем в порядке возрастания, то
             // Перебрасываем элементы большие pivot вправо, а меньшие влево.
             // Чтобы потом можно было запустить quickSort на двух подмассивах.
             swaps++;
@@ -207,17 +283,18 @@ void quickSort(int *arr, int size, int &swaps, int &comparisons) {
             j--;
         }
     }
-    quickSort(arr, j + 1, swaps, comparisons); // Левая часть от pivot
-    quickSort(arr + i, size - i, swaps, comparisons); // Правая часть от pivot
+    quickSort(arr, j + 1, inOrder, swaps, comparisons); // Левая часть от pivot
+    quickSort(arr + i, size - i, inOrder, swaps, comparisons); // Правая часть от pivot
     // Сам pivot стоит на индексе
 }
 
-/*
+/**
  * This function copying matrix;
- * To properly do that you should provide @params matrix, M, N.
- * M - number of rows;
- * N - number of columns;
- */
+ * To properly do that you should provide
+ * @param matrix - initial matrix to copy
+ * @param M - number of rows @param N - number of columns;
+*/
+
 int **copyMatrix(int **matrix, int M, int N) {
     int **ans = (int **) malloc(sizeof(int *) * M);
     for (int i = 0; i < M; i++) {
@@ -242,9 +319,7 @@ void deleteMatrix(int **matrix, int M) {
     free(matrix);
 }
 
-void sub_main() {
-    double bottom = 0.0;
-    double top = 100.0;
+void sub_main(Comparator myComparator = ascendingOrder) { // По умолчанию сортируем по возрастанию
 
     int SIZE_M, SIZE_N;
     std::cout << "Enter matrix SIZE_M: ";
@@ -257,6 +332,9 @@ void sub_main() {
 
     if (SIZE_M <= 0 || SIZE_N <= 0) throw std::invalid_argument("ERROR: Matrix cannot exist");
 
+    auto bottom = (double) (-SIZE_M * SIZE_N);
+    auto top = (double) (SIZE_M * SIZE_N);
+
     int spaces = amountOfDigits((int) top) +
                  ADDITIONAL_SPACING; // -> дополнительные пробелы для того, чтобы цифры не слипались
     std::cout << "\n";
@@ -264,13 +342,8 @@ void sub_main() {
     std::cout.precision(precision);
 
 
-    /// Принято считать индексацию в матрицах начиная с 1,
-    /// т.е. K_PARAM = 3 соответствует третья строчка -> i = 2
-    /// Чтобы все время не исправлять эту индексацию в коде, сразу сделаем так
-
-
     std::random_device rd;
-    std::mt19937 mt(rd());
+    std::mt19937 mt(rd()); // Mersenne Twister Algorithm (https://en.wikipedia.org/wiki/Mersenne_Twister)
     std::uniform_real_distribution<double> dist(bottom, top);
 
     int **matrix = (int **) malloc(sizeof(int *) * SIZE_M);
@@ -307,12 +380,13 @@ void sub_main() {
         }
     }
     */
+    typedef void (*SortFunction)(int *, int, Comparator, int &, int &);
 
-    std::function<void(int *, int, int &, int &)> sortingAlgorithms[] = {
-            bubbleSort, selectionSort, insertionSort, shellSort, quickSort
+    SortFunction sortingAlgorithms[] = {
+            bubbleSort, selectionSort, selectionSort_orderFinder, insertionSort, shellSort, quickSort
     };
     int SORTING_ALGORITHMS_SIZE = sizeof(sortingAlgorithms) / sizeof(sortingAlgorithms[0]);
-    std::string sortingAlgorithmsNames[] = {"Bubble", "Selection", "Insertion", "Shell", "Quick"};
+    std::string sortingAlgorithmsNames[] = {"Bubble", "Selection", "SpecialSelection", "Insertion", "Shell", "Quick"};
     /// temp_mx - массив из пяти одинаковый матриц, каждая из который изначально равна исходной matrix
     /// Она служит для того, чтобы на ней провести опыты с сортировками и потом сравнить их работу и сам результат
     /// Конечно можно было бы просто не делать строчку с присваиванием отсортированных значений в старую матрицу,
@@ -329,11 +403,13 @@ void sub_main() {
         }
     }
     long *total_swaps = (long *) malloc(sizeof(long) * SORTING_ALGORITHMS_SIZE);
-    long *total_comparisons = (long *) malloc(sizeof(long ) * SORTING_ALGORITHMS_SIZE);
+    long *total_comparisons = (long *) malloc(sizeof(long) * SORTING_ALGORITHMS_SIZE);
     for (int i = 0; i < SORTING_ALGORITHMS_SIZE; i++) {
         total_swaps[i] = 0;
         total_comparisons[i] = 0;
     }
+
+    // Основной проход по всем алгоритмам сортировки;
 
     for (int algorithm_index = 0; algorithm_index < SORTING_ALGORITHMS_SIZE; algorithm_index++) {
         for (int i = 0; i < SIZE_N; i++) {
@@ -344,7 +420,8 @@ void sub_main() {
             int size = SIZE_M;
             auto sortingAlgo = sortingAlgorithms[algorithm_index];
             int swaps = 0, comparisons = 0;
-            sortingAlgo(column, size, swaps, comparisons);
+
+            sortingAlgo(column, size, myComparator, swaps, comparisons);
 
             total_swaps[algorithm_index] += swaps;
             total_comparisons[algorithm_index] += comparisons;
@@ -374,8 +451,8 @@ void sub_main() {
      * Standard = temp_mx[0];
      */
 
-    std::cout << "Comparing results of sorting algorithms to Bubble Sort";
-
+    std::cout << "Comparing results of sorting algorithms to Bubble Sort\n";
+    std::cout << "======================================================\n";
     int **standard = temp_mx[0];
     for (int i = 1; i < SORTING_ALGORITHMS_SIZE; i++) {
         bool fl = false;
@@ -395,17 +472,20 @@ void sub_main() {
     }
 
     std::cout << "\n\nCHANGED MATRIX \n\n";
+    for (int k = 0; k < SORTING_ALGORITHMS_SIZE; k++) {
+        std::cout << "Method: " << sortingAlgorithmsNames[k] << std::endl;
 
-    for (int i = 0; i < SIZE_M; i++) {
-        for (int j = 0; j < SIZE_N; j++) {
-            element = standard[i][j];
-            std::cout
-                    << std::setw(spaces)
-                    << element;
-            //printf(" %4d ", matrix[i * SIZE + j]); // Deprecated
+        for (int i = 0; i < SIZE_M; i++) {
+            for (int j = 0; j < SIZE_N; j++) {
+                element = temp_mx[k][i][j];
+                std::cout
+                        << std::setw(spaces)
+                        << element;
+                //printf(" %4d ", matrix[i * SIZE + j]); // Deprecated
 
+            }
+            std::cout << std::endl;
         }
-        std::cout << std::endl;
     }
     /// Подведение итогов
     std::cout << "\nFINAL COMPARISON" << std::endl;
@@ -431,7 +511,6 @@ void sub_main() {
     }
     free(temp_mx);
     deleteMatrix(matrix, SIZE_M);
-
 
 
 }
