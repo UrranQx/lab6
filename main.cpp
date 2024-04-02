@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <thread>
 #include <algorithm>
+#include <functional>
 //#include <functional>
 
 #define EPS 1e-15
@@ -31,7 +32,7 @@ typedef bool (*Comparator)(int, int);
 
 /// @brief Проверяет, если элементы соответственно стоят в порядке возрастания
 bool ascendingOrder(int a, int b) {
-    return a < b;
+    return a <= b;
 }
 
 /// @brief Проверяет, если сумма цифр числа стоит в порядке возрастания
@@ -67,12 +68,13 @@ bool absAscendingOrder(int a, int b) {
     int absA = abs(a);
     int absB = abs(b);
     if (absA == absB) return a < b;
-    return abs(a) < abs(b);
+    return absA < absB;
 }
 
 /// @brief Проверяет, если элементы по их абсолютным значениям расположены в порядке возрастания.
 /// В случае совпадения абсолютных значений, большее число располагается левее меньшего.
 bool absDescendingOrder(int a, int b) {
+    if (a == b) return true;
     int absA = abs(a);
     int absB = abs(b);
     if (absA == absB) return a > b;
@@ -128,18 +130,9 @@ void quickSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparis
 
 void selectionSort_orderFinder(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons);
 
-void mergeSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons);
-
-void heapSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons);
-
-void cocktailSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons);
-
-void gnomeSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons);
-
-void timSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons);
 
 /*
- * Реализовать сортировки для шаблона T: bubble sort, selection sort, insertion sort, Shell sort, quicksort;
+ * Реализовать сортировки bubble sort, selection sort, insertion sort, Shell sort, quicksort;
  * Пусть функции будут не чистыми и редактируют данный им массив напрямую, т.к. я им все равно буду давать копию.
  * Дана матрица M x N --> где M - количество элементов в столбце, N - количество эл-в в строке.
  * Упорядочить каждый столбец матрицы по убыванию абсолютных величин.
@@ -286,10 +279,12 @@ void selectionSort(int *arr, int size, Comparator inOrder, int &swaps, int &comp
 
 void insertionSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons) {
     for (int key = 1; key < size; key++) {
-        for (int i = key; i > 0 && !inOrder(arr[i - 1], arr[i]); i--) {
-            std::swap(arr[i - 1], arr[i]);
-            swaps++;
+        for (int i = key; i > 0; i--) {
             comparisons++;
+            if (!inOrder(arr[i - 1], arr[i])) {
+                std::swap(arr[i - 1], arr[i]);
+                swaps++;
+            } else break;
         }
     }
 }
@@ -306,172 +301,61 @@ void shellSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparis
         for (int i = gap; i < size; i++) {
             int temp = arr[i];
             int j;
-            for (j = i; j >= gap && !inOrder(arr[j - gap], temp); j -= gap) {
-                arr[j] = arr[j - gap];
-                swaps++;
+            for (j = i; j >= gap; j -= gap) {
                 comparisons++;
+                if (!inOrder(arr[j - gap], temp)) {
+                    arr[j] = arr[j - gap];
+                    swaps++;
+                } else break;
             }
             arr[j] = temp;
         }
     }
 }
 
+/*
+ * Задача - написать quick sort, который будет работать стабильно (т.е. если значения равны, то их порядок не меняется)
+ * Для этого будем использовать способ разбивки на подмассивы, который не меняет порядок элементов, если они равны.
+ * Т.е. если элементы равны, то мы просто пропускаем их.
+ */
+
+void quickSort3Way(int *arr, int low, int high, Comparator inOrder, int &swaps, int &comparisons) {
+    if (high <= low) return;
+    if (high - low <2) {
+        comparisons++;
+        if(inOrder(arr[high], arr[low]) && arr[high] != arr[low]) {
+            swaps++;
+            std::swap(arr[high], arr[low]);
+        }
+        return;
+    }
+
+
+    int lt = low;
+    int gt = high;
+    int pivot = arr[low];
+    int i = low;
+
+    while (i <= gt) {
+        comparisons++;
+        if (inOrder(arr[i], pivot) && arr[i] != pivot) {
+            swaps++;
+            std::swap(arr[lt++], arr[i++]);
+        } else if (inOrder(pivot, arr[i]) && arr[i] != pivot) {
+            swaps++;
+            std::swap(arr[i], arr[gt--]);
+        } else {
+            i++;
+        }
+    }
+
+    quickSort3Way(arr, low, lt - 1, inOrder, swaps, comparisons);
+    quickSort3Way(arr, gt + 1, high, inOrder, swaps, comparisons);
+}
+
 void quickSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons) {
-    if (size <= 1) return;
-    int pivot = arr[size / 2]; // pivot - указатель на половину (ну с учетом округления при целочисленном делении)
-    int i = 0, j = size - 1;
-    while (i <= j) {
-        while (inOrder(arr[i], pivot)) {
-            i++;
-            comparisons++;
-        } // Слева будут элементы, которые должны находится при заданном порядке до pivot
-        while (inOrder(pivot, arr[j])) {
-            j--;
-            comparisons++;
-        } // Справа будут элементы, которые должны находится при заданном порядке после pivot
-        if (i <= j) {
-            std::swap(arr[i], arr[j]);
-            // Если сортируем в порядке возрастания, то
-            // Перебрасываем элементы большие pivot вправо, а меньшие влево.
-            // Чтобы потом можно было запустить quickSort на двух подмассивах.
-            swaps++;
-            i++;
-            j--;
-        }
-    }
-    quickSort(arr, j + 1, inOrder, swaps, comparisons); // Левая часть от pivot
-    quickSort(arr + i, size - i, inOrder, swaps, comparisons); // Правая часть от pivot
-    // Сам pivot стоит на индексе
+    quickSort3Way(arr, 0, size - 1, inOrder, swaps, comparisons);
 }
-
-void mergeSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons) {
-    if (size <= 1) return;
-    int middle = size / 2;
-    int *left = arr;
-    int *right = arr + middle;
-    int leftSize = middle;
-    int rightSize = size - middle;
-    mergeSort(left, leftSize, inOrder, swaps, comparisons);
-    mergeSort(right, rightSize, inOrder, swaps, comparisons);
-    int *temp = (int *) malloc(sizeof(int) * size);
-    int i = 0, j = 0, k = 0;
-    while (i < leftSize && j < rightSize) {
-        if (inOrder(left[i], right[j])) {
-            temp[k++] = left[i++];
-        } else {
-            temp[k++] = right[j++];
-        }
-        comparisons++;
-    }
-    // Еще раз пробегаем, чтобы добавить оставшиеся элементы, потому что в предыдущем цикле мы вышли из него, когда
-    // один из массивов закончился.
-    while (i < leftSize) {
-        temp[k++] = left[i++];
-    }
-    while (j < rightSize) {
-        temp[k++] = right[j++];
-    }
-    for (int i = 0; i < size; i++) {
-        arr[i] = temp[i];
-    }
-    free(temp);
-}
-
-// This is a hybrid of merge sort and insertion sort
-// It is used in Python, Java, and Android
-void timSort(int *arr, int sizeArr, Comparator inOrder, int &swaps, int &comparisons) {
-    ///
-    int minrun = 32;
-    for (int i = 0; i < sizeArr; i += minrun) {
-        insertionSort(arr + i, std::min((i + minrun), sizeArr) - i, inOrder, swaps, comparisons);
-    }
-    for (int size = minrun; size < sizeArr; size = 2 * size) {
-        for (int left = 0; left < sizeArr; left += 2 * size) {
-            int mid = left + size - 1;
-            int right = std::min((left + 2 * size - 1), (sizeArr - 1));
-            mergeSort(arr + left, right - left + 1, inOrder, swaps, comparisons);
-        }
-    }
-
-
-}
-
-void heapify(int *arr, int size, int i, Comparator inOrder, int &swaps, int &comparisons) {
-    int largest = i;
-    int left = 2 * i + 1;
-    int right = 2 * i + 2;
-    if (left < size && !inOrder(arr[left], arr[largest])) {
-        comparisons++;
-        largest = left;
-    }
-    if (right < size && !inOrder(arr[right], arr[largest])) {
-        comparisons++;
-        largest = right;
-    }
-    if (largest != i) {
-        comparisons++;
-        std::swap(arr[i], arr[largest]);
-        swaps++;
-        heapify(arr, size, largest, inOrder, swaps, comparisons);
-    }
-}
-
-void heapSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons) {
-    for (int i = size / 2 - 1; i >= 0; i--) {
-        heapify(arr, size, i, inOrder, swaps, comparisons);
-    }
-    for (int i = size - 1; i > 0; i--) {
-        std::swap(arr[0], arr[i]);
-        swaps++;
-        heapify(arr, i, 0, inOrder, swaps, comparisons);
-    }
-}
-
-
-void cocktailSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons) {
-    bool swapped = true;
-    int start = 0;
-    int end = size - 1;
-    while (swapped) {
-        swapped = false;
-        for (int i = start; i < end; i++) {
-            if (!inOrder(arr[i], arr[i + 1])) {
-                std::swap(arr[i], arr[i + 1]);
-                swaps++;
-                swapped = true;
-            }
-            comparisons++;
-        }
-        if (!swapped) break;
-        swapped = false;
-        end--;
-        for (int i = end - 1; i >= start; i--) {
-            if (!inOrder(arr[i], arr[i + 1])) {
-                std::swap(arr[i], arr[i + 1]);
-                swaps++;
-                swapped = true;
-            }
-            comparisons++;
-        }
-        start++;
-    }
-}
-
-void gnomeSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons) {
-    int i = 0;
-    while (i < size) {
-        if (i == 0) i++;
-        if (inOrder(arr[i], arr[i - 1])) {
-            std::swap(arr[i], arr[i - 1]);
-            swaps++;
-            i--;
-        } else {
-            i++;
-        }
-        comparisons++;
-    }
-}
-
 
 void reverseArray(int *arr, int size) {
     for (int i = 0; i < size / 2; i++) {
@@ -526,14 +410,14 @@ void sub_main(int SIZE_M, int SIZE_N, Comparator myComparator) {
     std::mt19937 mt(rd()); // Mersenne Twister Algorithm (https://en.wikipedia.org/wiki/Mersenne_Twister)
     std::uniform_real_distribution<double> dist(-rangeBorder, rangeBorder);
     /// Debug level
-    short debug = NO_DEBUG;
+    short debug = DEBUG_MAX;
 
     int **matrix = (int **) malloc(sizeof(int *) * SIZE_M);
     for (int i = 0; i < SIZE_M; i++) {
         matrix[i] = (int *) malloc(sizeof(int) * SIZE_N);
         // Сразу заполним матрицу элементами
         for (int j = 0; j < SIZE_N; j++) {
-            matrix[i][j] = i * SIZE_M + j; // Случайное число от 0 до 10000 не включительно
+            matrix[i][j] = i;//(int) dist(mt); // Случайное число от 0 до 10000 не включительно
         }
     }
 
@@ -568,12 +452,11 @@ void sub_main(int SIZE_M, int SIZE_N, Comparator myComparator) {
     typedef void (*SortFunction)(int *, int, Comparator, int &, int &);
 
     SortFunction sortingAlgorithms[] = {
-            bubbleSort, selectionSort, selectionSort_orderFinder, insertionSort, shellSort, quickSort, mergeSort,
-            heapSort, cocktailSort, gnomeSort, timSort
+            bubbleSort, selectionSort, /*selectionSort_orderFinder, */insertionSort, shellSort, quickSort
     };
     int SORTING_ALGORITHMS_SIZE = sizeof(sortingAlgorithms) / sizeof(sortingAlgorithms[0]);
-    std::string sortingAlgorithmsNames[] = {"Bubble", "Selection", "SpecialSelection", "Insertion", "Shell", "Quick",
-                                            "Merge", "Heap", "Cocktail", "Gnome", "Tim"};
+    std::string sortingAlgorithmsNames[] = {"Bubble", "Selection", /*"SpecialSelection",*/ "Insertion", "Shell",
+                                            "Quick"};
     /// temp_mx - массив из пяти одинаковый матриц, каждая из который изначально равна исходной matrix
     /// Она служит для того, чтобы на ней провести опыты с сортировками и потом сравнить их работу и сам результат
     /// Конечно можно было бы просто не делать строчку с присваиванием отсортированных значений в старую матрицу,
@@ -590,7 +473,8 @@ void sub_main(int SIZE_M, int SIZE_N, Comparator myComparator) {
         }
     }
     auto *total_swaps = (unsigned long long *) malloc(sizeof(unsigned long long) * SORTING_ALGORITHMS_SIZE);
-    auto *total_comparisons = (unsigned long long *) malloc(sizeof(unsigned long long) * SORTING_ALGORITHMS_SIZE);
+    auto *total_comparisons = (unsigned long long *) malloc(
+            sizeof(unsigned long long) * SORTING_ALGORITHMS_SIZE);
 
     for (int i = 0; i < SORTING_ALGORITHMS_SIZE; i++) {
         total_swaps[i] = 0;
@@ -651,14 +535,16 @@ void sub_main(int SIZE_M, int SIZE_N, Comparator myComparator) {
                 for (int k = 0; k < SIZE_N; ++k) {
                     if (standard[j][k] != t_mx[j][k]) {
                         fl = true;
-                        std::cout << "\nMethod" << sortingAlgorithmsNames[i] << " is a total failure" << std::endl;
+                        std::cout << "\nMethod" << sortingAlgorithmsNames[i] << " is a total failure"
+                                  << std::endl;
                         break;
                     }
 
                 }
                 if (fl) break;
             }
-            if (!fl) std::cout << "Everything is okay with: " << sortingAlgorithmsNames[i] << " sort" << std::endl;
+            if (!fl)
+                std::cout << "Everything is okay with: " << sortingAlgorithmsNames[i] << " sort" << std::endl;
         }
 
         std::cout << ANSI_COLOR_MAGENTA "\nCHANGED MATRIX \n" << ANSI_COLOR_RESET;
@@ -717,7 +603,6 @@ void sub_main(int SIZE_M, int SIZE_N, Comparator myComparator) {
     }
     free(temp_mx);
     deleteMatrix(matrix, SIZE_M);
-
 
 }
 
