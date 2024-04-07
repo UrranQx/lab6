@@ -160,7 +160,7 @@ int main() {
     std::cout << std::endl;
 
     if (SIZE_M <= 0 || SIZE_N <= 0) throw std::invalid_argument("ERROR: Matrix cannot exist");
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 1; i++) {
         sub_main(SIZE_M, SIZE_N, myComparator);
     }
 
@@ -277,16 +277,20 @@ void selectionSort(int *arr, int size, Comparator inOrder, int &swaps, int &comp
 }
 
 void insertionSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons) {
-    for (int key = 1; key < size; key++) {
-        for (int i = key; i > 0; i--) {
+    for (int i = 1; i < size; i++) {
+        int temp = arr[i];
+        int j;
+        for (j = i; j >= 1; j -= 1) {
             comparisons++;
-            if (!inOrder(arr[i - 1], arr[i])) {
-                std::swap(arr[i - 1], arr[i]);
+            if (!inOrder(arr[j - 1], temp)) {
+                arr[j] = arr[j - 1];
                 swaps++;
             } else break;
         }
+        arr[j] = temp;
     }
 }
+
 
 /*
  * Shell sort - улучшенная версия insertion sort.
@@ -317,40 +321,6 @@ void shellSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparis
  * Для этого будем использовать способ разбивки на подмассивы, который не меняет порядок элементов, если они равны.
  * Т.е. если элементы равны, то мы просто пропускаем их.
  */
-
-void quickSort3Way(int *arr, int low, int high, Comparator inOrder, int &swaps, int &comparisons) {
-    if (high <= low) return;
-    if (high - low < 2) {
-        comparisons++;
-        if (inOrder(arr[high], arr[low]) && arr[high] != arr[low]) {
-            swaps++;
-            std::swap(arr[high], arr[low]);
-        }
-        return;
-    }
-
-
-    int lt = low;
-    int gt = high;
-    int pivot = arr[low];
-    int i = low;
-
-    while (i <= gt) {
-        comparisons++;
-        if (inOrder(arr[i], pivot) && arr[i] != pivot) {
-            swaps++;
-            std::swap(arr[lt++], arr[i++]);
-        } else if (inOrder(pivot, arr[i]) && arr[i] != pivot) {
-            swaps++;
-            std::swap(arr[i], arr[gt--]);
-        } else {
-            i++;
-        }
-    }
-
-    quickSort3Way(arr, low, lt - 1, inOrder, swaps, comparisons);
-    quickSort3Way(arr, gt + 1, high, inOrder, swaps, comparisons);
-}
 
 
 void quickSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons) {
@@ -438,7 +408,7 @@ void sub_main(int SIZE_M, int SIZE_N, Comparator myComparator) {
     std::mt19937 mt(rd()); // Mersenne Twister Algorithm (https://en.wikipedia.org/wiki/Mersenne_Twister)
     std::uniform_real_distribution<double> dist(-rangeBorder, rangeBorder);
     /// Debug level
-    short debug = NO_DEBUG;
+    short debug = DEBUG_MAX;
 
     int **matrix = (int **) malloc(sizeof(int *) * SIZE_M);
     for (int i = 0; i < SIZE_M; i++) {
@@ -579,7 +549,7 @@ void sub_main(int SIZE_M, int SIZE_N, Comparator myComparator) {
         std::cout << ANSI_COLOR_MAGENTA "\nCHANGED MATRIX \n" << ANSI_COLOR_RESET;
 
         for (int k = 0; k < SORTING_ALGORITHMS_SIZE; k++) {
-            if (debug == DEBUG_MIN)continue;
+            if (debug <= DEBUG_MIN)continue;
             std::cout << "Method: " << sortingAlgorithmsNames[k] << std::endl;
             for (int i = 0; i < SIZE_M; i++) {
                 for (int j = 0; j < SIZE_N; j++) {
