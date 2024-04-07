@@ -4,8 +4,7 @@
 #include <iomanip>
 #include <thread>
 #include <algorithm>
-#include <functional>
-//#include <functional>
+
 
 #define EPS 1e-15
 #define SET_PRECISION 3
@@ -161,9 +160,9 @@ int main() {
     std::cout << std::endl;
 
     if (SIZE_M <= 0 || SIZE_N <= 0) throw std::invalid_argument("ERROR: Matrix cannot exist");
-
-    sub_main(SIZE_M, SIZE_N, myComparator);
-
+    for (int i = 0; i < 5; i++) {
+        sub_main(SIZE_M, SIZE_N, myComparator);
+    }
 
     ///TESTING DIFFERENT COMPARATORS
     //sub_main(5,5,compareBySumOfDigits);
@@ -321,9 +320,9 @@ void shellSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparis
 
 void quickSort3Way(int *arr, int low, int high, Comparator inOrder, int &swaps, int &comparisons) {
     if (high <= low) return;
-    if (high - low <2) {
+    if (high - low < 2) {
         comparisons++;
-        if(inOrder(arr[high], arr[low]) && arr[high] != arr[low]) {
+        if (inOrder(arr[high], arr[low]) && arr[high] != arr[low]) {
             swaps++;
             std::swap(arr[high], arr[low]);
         }
@@ -353,8 +352,37 @@ void quickSort3Way(int *arr, int low, int high, Comparator inOrder, int &swaps, 
     quickSort3Way(arr, gt + 1, high, inOrder, swaps, comparisons);
 }
 
+
 void quickSort(int *arr, int size, Comparator inOrder, int &swaps, int &comparisons) {
-    quickSort3Way(arr, 0, size - 1, inOrder, swaps, comparisons);
+    //quickSort3Way(arr, 0, size - 1, inOrder, swaps, comparisons);
+    if (size <= 1) return;
+    int pivot = arr[size / 2]; // pivot - указатель на половину (ну с учетом округления при целочисленном делении)
+    int i = 0, j = size - 1;
+    while (i <= j) {
+        while (inOrder(arr[i], pivot) && arr[i] != pivot) {
+            i++;
+            comparisons++;
+        } // Слева будут элементы, которые должны находится при заданном порядке до pivot
+        while (inOrder(pivot, arr[j]) && arr[j] != pivot) {
+            j--;
+            comparisons++;
+        } // Справа будут элементы, которые должны находится при заданном порядке после pivot
+        if (i <= j) {
+            comparisons++;
+            if (arr[i] != arr[j]) {
+                std::swap(arr[i], arr[j]);
+                swaps++;
+            }
+            // Если сортируем в порядке возрастания, то
+            // Перебрасываем элементы большие pivot вправо, а меньшие влево.
+            // Чтобы потом можно было запустить quickSort на двух подмассивах.
+            i++;
+            j--;
+        }
+    }
+    quickSort(arr, j + 1, inOrder, swaps, comparisons); // Левая часть от pivot
+    quickSort(arr + i, size - i, inOrder, swaps, comparisons); // Правая часть от pivot
+    // Сам pivot стоит на индексе
 }
 
 void reverseArray(int *arr, int size) {
@@ -410,14 +438,14 @@ void sub_main(int SIZE_M, int SIZE_N, Comparator myComparator) {
     std::mt19937 mt(rd()); // Mersenne Twister Algorithm (https://en.wikipedia.org/wiki/Mersenne_Twister)
     std::uniform_real_distribution<double> dist(-rangeBorder, rangeBorder);
     /// Debug level
-    short debug = DEBUG_MAX;
+    short debug = NO_DEBUG;
 
     int **matrix = (int **) malloc(sizeof(int *) * SIZE_M);
     for (int i = 0; i < SIZE_M; i++) {
         matrix[i] = (int *) malloc(sizeof(int) * SIZE_N);
         // Сразу заполним матрицу элементами
         for (int j = 0; j < SIZE_N; j++) {
-            matrix[i][j] = i;//(int) dist(mt); // Случайное число от 0 до 10000 не включительно
+            matrix[i][j] = (int) dist(mt); // Случайное число от 0 до 10000 не включительно
         }
     }
 
@@ -537,6 +565,7 @@ void sub_main(int SIZE_M, int SIZE_N, Comparator myComparator) {
                         fl = true;
                         std::cout << "\nMethod" << sortingAlgorithmsNames[i] << " is a total failure"
                                   << std::endl;
+                        throw std::invalid_argument("ERROR: total failure");
                         break;
                     }
 
@@ -550,7 +579,7 @@ void sub_main(int SIZE_M, int SIZE_N, Comparator myComparator) {
         std::cout << ANSI_COLOR_MAGENTA "\nCHANGED MATRIX \n" << ANSI_COLOR_RESET;
 
         for (int k = 0; k < SORTING_ALGORITHMS_SIZE; k++) {
-            if (debug < DEBUG_MAX && k > 0)continue;
+            if (debug == DEBUG_MIN)continue;
             std::cout << "Method: " << sortingAlgorithmsNames[k] << std::endl;
             for (int i = 0; i < SIZE_M; i++) {
                 for (int j = 0; j < SIZE_N; j++) {
