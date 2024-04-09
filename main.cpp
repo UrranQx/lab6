@@ -9,7 +9,8 @@
 #define ADDITIONAL_SPACING 2
 #define NO_DEBUG 0
 #define DEBUG_MIN 1
-#define DEBUG_MAX 2
+#define DEBUG_MID 2
+#define DEBUG_MAX 3
 #define TABLE_SPACING 20
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -107,7 +108,7 @@ unsigned long long maxFrom(const unsigned long long *arr, int size) {
     return max;
 }
 
-void sub_main(int SIZE_M = 3, int SIZE_N = 4, Comparator myComparator = ascendingOrder);
+void sub_main(int SIZE_M = 3, int SIZE_N = 4, Comparator myComparator = ascendingOrder, short debug = NO_DEBUG);
 
 int findIndexOfMax(const int *_arr, int begin, int end, int &comparisons);
 
@@ -148,6 +149,7 @@ void selectionSort_orderFinder(int *arr, int size, Comparator inOrder, int &swap
 
 int main() {
     Comparator myComparator = absDescendingOrder;
+    short debug = DEBUG_MIN;
     int SIZE_M, SIZE_N;
     std::cout << "Enter matrix SIZE_M: ";
     std::cin >> SIZE_M;
@@ -159,7 +161,7 @@ int main() {
 
     if (SIZE_M <= 0 || SIZE_N <= 0) throw std::invalid_argument("ERROR: Matrix cannot exist");
     for (int i = 0; i < 1; i++) {
-        sub_main(SIZE_M, SIZE_N, myComparator);
+        sub_main(SIZE_M, SIZE_N, myComparator, debug);
     }
 
     ///TESTING DIFFERENT COMPARATORS
@@ -391,7 +393,7 @@ void deleteMatrix(int **matrix, int M) {
     free(matrix);
 }
 
-void sub_main(int SIZE_M, int SIZE_N, Comparator myComparator) {
+void sub_main(int SIZE_M, int SIZE_N, Comparator myComparator, short debug) {
     // По умолчанию сортируем по возрастанию, но можно передать и другой компаратор.
     int range_bottom = (-SIZE_M * SIZE_N);
     int range_top = (SIZE_M * SIZE_N + 1);
@@ -406,7 +408,7 @@ void sub_main(int SIZE_M, int SIZE_N, Comparator myComparator) {
     std::mt19937 mt(rd()); // Mersenne Twister Algorithm (https://en.wikipedia.org/wiki/Mersenne_Twister)
     std::uniform_real_distribution<double> dist(-rangeBorder, rangeBorder);
     /// Debug level
-    short debug = DEBUG_MIN;
+
 
     int **matrix = (int **) malloc(sizeof(int *) * SIZE_M);
     for (int i = 0; i < SIZE_M; i++) {
@@ -547,7 +549,7 @@ void sub_main(int SIZE_M, int SIZE_N, Comparator myComparator) {
         std::cout << ANSI_COLOR_MAGENTA "\nCHANGED MATRIX \n" << ANSI_COLOR_RESET;
 
         for (int k = 0; k < SORTING_ALGORITHMS_SIZE; k++) {
-            if (debug <= DEBUG_MIN)continue;
+            if (debug == NO_DEBUG || (debug <= DEBUG_MID && k > 0))continue;
             std::cout << "Method: " << sortingAlgorithmsNames[k] << std::endl;
             for (int i = 0; i < SIZE_M; i++) {
                 for (int j = 0; j < SIZE_N; j++) {
