@@ -2,8 +2,6 @@
 #include <string>
 #include <random>
 #include <iomanip>
-#include <thread>
-#include <algorithm>
 
 
 #define EPS 1e-15
@@ -408,7 +406,7 @@ void sub_main(int SIZE_M, int SIZE_N, Comparator myComparator) {
     std::mt19937 mt(rd()); // Mersenne Twister Algorithm (https://en.wikipedia.org/wiki/Mersenne_Twister)
     std::uniform_real_distribution<double> dist(-rangeBorder, rangeBorder);
     /// Debug level
-    short debug = DEBUG_MAX;
+    short debug = DEBUG_MIN;
 
     int **matrix = (int **) malloc(sizeof(int *) * SIZE_M);
     for (int i = 0; i < SIZE_M; i++) {
